@@ -15,6 +15,7 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
   const [address, setAddress] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [isDisconnecting, setIsDisconnecting] = useState(false)
 
   // Set mounted state after component mounts
   useEffect(() => {
@@ -51,17 +52,21 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
 
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
-        // User disconnected
+        // User disconnected from wallet UI
+        console.log("Accounts changed to empty array - user disconnected from wallet UI")
         handleDisconnect()
       } else {
         // Account changed
+        console.log("Account changed to:", accounts[0])
         setAddress(accounts[0])
         const provider = new ethers.BrowserProvider(window.ethereum)
         onConnect(accounts[0], provider)
       }
     }
 
-    window.ethereum.on("accountsChanged", handleAccountsChanged)
+    if (window.ethereum.on) {
+      window.ethereum.on("accountsChanged", handleAccountsChanged)
+    }
 
     return () => {
       if (window.ethereum && window.ethereum.removeListener) {
@@ -96,24 +101,43 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
   }
 
   const handleDisconnect = () => {
+    console.log("Disconnecting wallet in WalletConnector component")
+    setIsDisconnecting(true)
+
     // Clear local state
     setAddress(null)
 
     // Call the parent's onDisconnect callback
     onDisconnect()
 
-    // Add localStorage cleanup if you're storing any wallet info
+    // Add localStorage cleanup
     if (typeof window !== "undefined") {
       localStorage.removeItem("walletConnected")
-      // Add any other wallet-related items you might be storing
+      localStorage.removeItem("connectedWallet")
     }
 
-    console.log("Wallet disconnected")
+    // Show disconnection message for 2 seconds
+    setTimeout(() => {
+      setIsDisconnecting(false)
+    }, 2000)
+
+    console.log("Wallet disconnected in WalletConnector component")
   }
 
   // Don't render anything during SSR
   if (!mounted) {
     return null
+  }
+
+  if (isDisconnecting) {
+    return (
+      <div className="space-y-2">
+        <div className="w-full p-2 bg-zinc-700 rounded-md text-center">
+          <p className="text-sm text-zinc-200">Wallet disconnected</p>
+          <p className="text-xs text-zinc-400">You can now connect a different wallet</p>
+        </div>
+      </div>
+    )
   }
 
   if (address) {

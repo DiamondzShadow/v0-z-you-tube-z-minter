@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Youtube, Wallet, Check, AlertCircle, History, XCircle } from "lucide-react"
+import { Loader2, Youtube, Wallet, Check, AlertCircle, History, XCircle, X } from "lucide-react"
 import { WalletConnector } from "./wallet-connector"
 import { GoogleLoginButton } from "./google-login-button"
 import { useGoogleAuth } from "@/hooks/use-google-auth"
@@ -26,10 +26,20 @@ export default function YouTubeMinter() {
   const [showTxStatus, setShowTxStatus] = useState(false)
   const [hasAlreadyClaimed, setHasAlreadyClaimed] = useState(false)
 
+  // New state for persistent messages
+  const [showStatusMessage, setShowStatusMessage] = useState(false)
+
   // Set mounted state after component mounts
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Make status messages persistent when status changes
+  useEffect(() => {
+    if (status !== "idle" && status !== "loading") {
+      setShowStatusMessage(true)
+    }
+  }, [status])
 
   // Handle wallet connection
   const handleWalletConnect = (walletAddress: string, walletProvider: any) => {
@@ -43,6 +53,7 @@ export default function YouTubeMinter() {
     setTxHash("")
     setShowTxStatus(false)
     setHasAlreadyClaimed(false)
+    setShowStatusMessage(false)
 
     // Check if this wallet has already claimed
     checkWalletClaimStatus(walletAddress)
@@ -60,8 +71,21 @@ export default function YouTubeMinter() {
     setMessage("")
     setTxHash("")
     setShowTxStatus(false)
+    setShowStatusMessage(false)
+
+    // Clear any localStorage items
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("walletConnected")
+      localStorage.removeItem("connectedWallet")
+      // Add any other wallet-related items you might be storing
+    }
 
     console.log("Wallet state cleared")
+  }
+
+  // Dismiss status message
+  const dismissStatusMessage = () => {
+    setShowStatusMessage(false)
   }
 
   // Check if wallet has already claimed
@@ -104,6 +128,7 @@ export default function YouTubeMinter() {
   async function handleClaim() {
     if (!address || !token) {
       setMessage("Please connect your wallet and Google account first")
+      setStatus("error")
       return
     }
 
@@ -118,6 +143,7 @@ export default function YouTubeMinter() {
       setStatus("loading")
       setMessage("Verifying subscription and minting tokens...")
       setShowTxStatus(false)
+      setShowStatusMessage(false)
 
       const result = await verifyAndMint(address, token)
 
@@ -247,28 +273,52 @@ export default function YouTubeMinter() {
           </div>
         )}
 
-        {/* Status Messages */}
-        {status === "success" && !showTxStatus && (
-          <Alert className="bg-green-900/20 border-green-800 text-green-400">
+        {/* Status Messages - Now with dismiss button */}
+        {showStatusMessage && status === "success" && !showTxStatus && (
+          <Alert className="bg-green-900/20 border-green-800 text-green-400 relative">
             <Check className="h-4 w-4" />
             <AlertTitle>Success!</AlertTitle>
             <AlertDescription>{message}</AlertDescription>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 h-6 w-6 text-green-400 hover:text-green-300 hover:bg-green-900/30"
+              onClick={dismissStatusMessage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </Alert>
         )}
 
-        {status === "error" && (
-          <Alert className="bg-red-900/20 border-red-800 text-red-400">
+        {showStatusMessage && status === "error" && (
+          <Alert className="bg-red-900/20 border-red-800 text-red-400 relative">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{message}</AlertDescription>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 h-6 w-6 text-red-400 hover:text-red-300 hover:bg-red-900/30"
+              onClick={dismissStatusMessage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </Alert>
         )}
 
-        {status === "already-claimed" && (
-          <Alert className="bg-amber-900/20 border-amber-800 text-amber-400">
+        {showStatusMessage && status === "already-claimed" && (
+          <Alert className="bg-amber-900/20 border-amber-800 text-amber-400 relative">
             <XCircle className="h-4 w-4" />
             <AlertTitle>Already Claimed</AlertTitle>
             <AlertDescription>{message}</AlertDescription>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 h-6 w-6 text-amber-400 hover:text-amber-300 hover:bg-amber-900/30"
+              onClick={dismissStatusMessage}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </Alert>
         )}
       </CardContent>

@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, ExternalLink, AlertCircle } from "lucide-react"
+import { Loader2, ExternalLink, AlertCircle, X } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import { WalletConnector } from "./wallet-connector"
 import { TransactionStatus } from "./transaction-status"
 import { formatDistanceToNow } from "date-fns"
@@ -25,16 +26,26 @@ export default function TransactionHistory() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState("all")
+  const [showError, setShowError] = useState(false)
 
   // Set mounted state after component mounts
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // Show error message when error changes
+  useEffect(() => {
+    if (error) {
+      setShowError(true)
+    }
+  }, [error])
+
   // Handle wallet connection
   const handleWalletConnect = (walletAddress: string) => {
     console.log("Wallet connected in history:", walletAddress)
     setAddress(walletAddress)
+    setError(null)
+    setShowError(false)
   }
 
   // Handle wallet disconnection
@@ -42,7 +53,14 @@ export default function TransactionHistory() {
     console.log("Wallet disconnection requested in history")
     setAddress(null)
     setTransactions([])
+    setError(null)
+    setShowError(false)
     console.log("Wallet state cleared in history")
+  }
+
+  // Dismiss error message
+  const dismissError = () => {
+    setShowError(false)
   }
 
   // Fetch transaction history when wallet is connected
@@ -52,6 +70,7 @@ export default function TransactionHistory() {
     const fetchTransactionHistory = async () => {
       setIsLoading(true)
       setError(null)
+      setShowError(false)
 
       try {
         const response = await fetch(`/api/transaction-history?address=${address}`)
@@ -122,11 +141,19 @@ export default function TransactionHistory() {
           </div>
         )}
 
-        {/* Error State */}
-        {error && !isLoading && (
-          <Alert variant="destructive" className="mb-4">
+        {/* Error State - Now with dismiss button */}
+        {showError && error && !isLoading && (
+          <Alert variant="destructive" className="mb-4 relative">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 h-6 w-6 text-red-400 hover:text-red-300 hover:bg-red-900/30"
+              onClick={dismissError}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </Alert>
         )}
 
