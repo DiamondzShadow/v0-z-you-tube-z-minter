@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Youtube, Wallet, Check, AlertCircle, History } from "lucide-react"
+import { Loader2, Youtube, Wallet, Check, AlertCircle, History, XCircle } from "lucide-react"
 import { WalletConnector } from "./wallet-connector"
 import { GoogleLoginButton } from "./google-login-button"
 import { useGoogleAuth } from "@/hooks/use-google-auth"
@@ -19,11 +19,12 @@ export default function YouTubeMinter() {
   const [provider, setProvider] = useState<any | null>(null)
   const { user, token, login, isLoading: isGoogleLoading } = useGoogleAuth()
 
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error" | "already-claimed">("idle")
   const [message, setMessage] = useState("")
   const [txHash, setTxHash] = useState("")
   const [tokenBalance, setTokenBalance] = useState<string | null>(null)
   const [showTxStatus, setShowTxStatus] = useState(false)
+  const [hasAlreadyClaimed, setHasAlreadyClaimed] = useState(false)
 
   // Set mounted state after component mounts
   useEffect(() => {
@@ -34,12 +35,43 @@ export default function YouTubeMinter() {
   const handleWalletConnect = (walletAddress: string, walletProvider: any) => {
     setAddress(walletAddress)
     setProvider(walletProvider)
+
+    // Reset claim status when wallet changes
+    setStatus("idle")
+    setMessage("")
+    setTxHash("")
+    setShowTxStatus(false)
+    setHasAlreadyClaimed(false)
+
+    // Check if this wallet has already claimed
+    checkWalletClaimStatus(walletAddress)
   }
 
   // Handle wallet disconnection
   const handleWalletDisconnect = () => {
     setAddress(null)
     setProvider(null)
+    setHasAlreadyClaimed(false)
+    setStatus("idle")
+  }
+
+  // Check if wallet has already claimed
+  async function checkWalletClaimStatus(walletAddress: string) {
+    try {
+      const response = await fetch(`/api/check-claim-status?address=${walletAddress}`)
+      const data = await response.json()
+
+      if (data.hasClaimed) {
+        setHasAlreadyClaimed(true)
+        setStatus("already-claimed")
+        setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
+        if (data.txHash && data.txHash !== "pending" && data.txHash !== "failed") {
+          setTxHash(data.txHash)
+        }
+      }
+    } catch (error) {
+      console.error("Failed to check claim status:", error)
+    }
   }
 
   // Check token balance when wallet is connected
@@ -66,6 +98,13 @@ export default function YouTubeMinter() {
       return
     }
 
+    // Double-check that wallet hasn't already claimed
+    if (hasAlreadyClaimed) {
+      setStatus("already-claimed")
+      setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
+      return
+    }
+
     try {
       setStatus("loading")
       setMessage("Verifying subscription and minting tokens...")
@@ -80,6 +119,14 @@ export default function YouTubeMinter() {
         setShowTxStatus(true)
         // Refresh token balance after successful mint
         fetchTokenBalance(address)
+      } else if (result.alreadyClaimed) {
+        setStatus("already-claimed")
+        setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
+        setHasAlreadyClaimed(true)
+        if (result.txHash) {
+          setTxHash(result.txHash)
+          setShowTxStatus(true)
+        }
       } else {
         setStatus("error")
         setMessage(result.error || "Failed to mint tokens. Please try again.")
@@ -159,11 +206,20 @@ export default function YouTubeMinter() {
         {/* Claim Button */}
         <div className="space-y-2">
           <div className="text-sm font-medium">Step 3: Verify subscription & claim tokens</div>
-          <Button className="w-full" onClick={handleClaim} disabled={!address || !user || status === "loading"}>
+          <Button
+            className="w-full"
+            onClick={handleClaim}
+            disabled={!address || !user || status === "loading" || hasAlreadyClaimed}
+          >
             {status === "loading" ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Verifying & Minting...
+              </>
+            ) : hasAlreadyClaimed ? (
+              <>
+                <XCircle className="mr-2 h-4 w-4" />
+                Already Claimed
               </>
             ) : (
               <>
@@ -195,6 +251,14 @@ export default function YouTubeMinter() {
           <Alert className="bg-red-900/20 border-red-800 text-red-400">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{message}</AlertDescription>
+          </Alert>
+        )}
+
+        {status === "already-claimed" && (
+          <Alert className="bg-amber-900/20 border-amber-800 text-amber-400">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>Already Claimed</AlertTitle>
             <AlertDescription>{message}</AlertDescription>
           </Alert>
         )}

@@ -2,10 +2,11 @@
 
 import { ethers } from "ethers"
 
-// ABI for ERC20 token minting function
+// Extended ABI for ERC20 token with hasClaimed function
 const tokenABI = [
   "function mint(address to, uint256 amount) external",
   "function balanceOf(address account) external view returns (uint256)",
+  "function hasClaimed(address wallet) external view returns (bool)", // Add this if your contract has it
 ]
 
 // Mock transaction for development
@@ -19,7 +20,42 @@ function createMockTransaction(address: string) {
   }
 }
 
+// Check if a wallet has already claimed (contract level)
+export async function hasWalletClaimed(walletAddress: string): Promise<boolean> {
+  // For development or if environment variables are missing
+  if (process.env.NODE_ENV !== "production" || !process.env.RPC_URL || !process.env.CONTRACT_ADDRESS) {
+    // Simulate based on wallet address for testing
+    return walletAddress.toLowerCase().endsWith("1") || walletAddress.toLowerCase().endsWith("3")
+  }
+
+  try {
+    const rpcUrl = process.env.RPC_URL
+    const contractAddress = process.env.CONTRACT_ADDRESS
+
+    const provider = new ethers.JsonRpcProvider(rpcUrl)
+    const contract = new ethers.Contract(contractAddress, tokenABI, provider)
+
+    // Check if the contract has the hasClaimed function
+    try {
+      return await contract.hasClaimed(walletAddress)
+    } catch (error) {
+      // If the contract doesn't have this function, fall back to checking the balance
+      const balance = await contract.balanceOf(walletAddress)
+      return balance > 0
+    }
+  } catch (error) {
+    console.error("Error checking if wallet has claimed:", error)
+    return false
+  }
+}
+
 export async function mintTokens(recipientAddress: string, amount: any) {
+  // First, check if the wallet has already claimed at the contract level
+  const hasClaimedOnChain = await hasWalletClaimed(recipientAddress)
+  if (hasClaimedOnChain) {
+    throw new Error("This wallet has already claimed tokens according to the smart contract.")
+  }
+
   // For development or if environment variables are missing
   if (
     process.env.NODE_ENV !== "production" ||
