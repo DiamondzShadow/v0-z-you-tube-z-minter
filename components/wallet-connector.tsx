@@ -52,8 +52,7 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
         // User disconnected
-        setAddress(null)
-        onDisconnect()
+        handleDisconnect()
       } else {
         // Account changed
         setAddress(accounts[0])
@@ -65,7 +64,9 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
     window.ethereum.on("accountsChanged", handleAccountsChanged)
 
     return () => {
-      window.ethereum.removeListener("accountsChanged", handleAccountsChanged)
+      if (window.ethereum && window.ethereum.removeListener) {
+        window.ethereum.removeListener("accountsChanged", handleAccountsChanged)
+      }
     }
   }, [onConnect, onDisconnect, mounted])
 
@@ -94,9 +95,20 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
     }
   }
 
-  const disconnectWallet = () => {
+  const handleDisconnect = () => {
+    // Clear local state
     setAddress(null)
+
+    // Call the parent's onDisconnect callback
     onDisconnect()
+
+    // Add localStorage cleanup if you're storing any wallet info
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("walletConnected")
+      // Add any other wallet-related items you might be storing
+    }
+
+    console.log("Wallet disconnected")
   }
 
   // Don't render anything during SSR
@@ -107,7 +119,7 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
   if (address) {
     return (
       <div className="space-y-2">
-        <Button variant="outline" onClick={disconnectWallet} className="w-full">
+        <Button variant="outline" onClick={handleDisconnect} className="w-full">
           <LogOut className="mr-2 h-4 w-4" />
           Disconnect Wallet
         </Button>

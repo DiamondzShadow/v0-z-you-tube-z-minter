@@ -33,13 +33,16 @@ export default function TransactionHistory() {
 
   // Handle wallet connection
   const handleWalletConnect = (walletAddress: string) => {
+    console.log("Wallet connected in history:", walletAddress)
     setAddress(walletAddress)
   }
 
   // Handle wallet disconnection
   const handleWalletDisconnect = () => {
+    console.log("Wallet disconnection requested in history")
     setAddress(null)
     setTransactions([])
+    console.log("Wallet state cleared in history")
   }
 
   // Fetch transaction history when wallet is connected

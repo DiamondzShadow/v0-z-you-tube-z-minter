@@ -33,6 +33,7 @@ export default function YouTubeMinter() {
 
   // Handle wallet connection
   const handleWalletConnect = (walletAddress: string, walletProvider: any) => {
+    console.log("Wallet connected:", walletAddress)
     setAddress(walletAddress)
     setProvider(walletProvider)
 
@@ -49,10 +50,18 @@ export default function YouTubeMinter() {
 
   // Handle wallet disconnection
   const handleWalletDisconnect = () => {
+    console.log("Wallet disconnection requested")
+    // Clear all wallet-related state
     setAddress(null)
     setProvider(null)
+    setTokenBalance(null)
     setHasAlreadyClaimed(false)
     setStatus("idle")
+    setMessage("")
+    setTxHash("")
+    setShowTxStatus(false)
+
+    console.log("Wallet state cleared")
   }
 
   // Check if wallet has already claimed
