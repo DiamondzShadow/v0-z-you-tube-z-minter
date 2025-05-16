@@ -84,16 +84,25 @@ export async function verifyAndMint(walletAddress: string, googleAccessToken: st
         timestamp: Date.now(),
       })
 
+      // Check if the error is related to already claimed tokens
+      if (mintError.message && mintError.message.includes("already claimed")) {
+        return {
+          success: false,
+          error: "This wallet has already claimed tokens. Each wallet can only claim once.",
+          alreadyClaimed: true,
+        }
+      }
+
       return {
         success: false,
-        error: "Failed to mint tokens: " + (mintError.message || "Unknown error"),
+        error: "Failed to mint tokens. Please try again later.",
       }
     }
   } catch (error: any) {
     console.error("Error in verifyAndMint:", error)
     return {
       success: false,
-      error: error.message || "Failed to verify and mint tokens",
+      error: "An unexpected error occurred. Please try again later.",
     }
   }
 }

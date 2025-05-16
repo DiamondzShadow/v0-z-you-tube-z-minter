@@ -5,27 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Youtube, Wallet, Check, AlertCircle, History, XCircle, X, Coffee } from "lucide-react"
+import { Loader2, Youtube, Wallet, Check, AlertCircle, History, XCircle, X } from "lucide-react"
 import { WalletConnector } from "./wallet-connector"
 import { GoogleLoginButton } from "./google-login-button"
 import { useGoogleAuth } from "@/hooks/use-google-auth"
 import { verifyAndMint } from "@/lib/actions"
 import { TransactionStatus } from "./transaction-status"
+import { DoubleClaimMessage } from "./double-claim-message"
 import Link from "next/link"
-
-// Array of witty responses for repeat claimers
-const wittyResponses = [
-  "Nice try! But these tokens are like potato chips - you can't have just one bag. Wait, actually you can only have one bag.",
-  "Whoa there, token collector! You've already claimed your share. Save some blockchain for the rest of us!",
-  "Token déjà vu! You've already claimed these digital treasures. No double-dipping in the crypto pool!",
-  "Your wallet says: 'Been there, claimed that.' One claim per wallet, those are the rules!",
-  "Looks like your wallet has a good memory - it remembers claiming these tokens already!",
-  "Sorry, this isn't a buffet - it's one serving of tokens per wallet!",
-  "Your wallet is already part of the token club! No need for a second membership.",
-  "Token greed detected! Just kidding, but you have already claimed your tokens.",
-  "Your wallet whispers: 'We've already got these tokens, what more do you want?'",
-  "The blockchain never forgets! Your wallet has already claimed its tokens.",
-]
 
 export default function YouTubeMinter() {
   const [mounted, setMounted] = useState(false)
@@ -39,9 +26,8 @@ export default function YouTubeMinter() {
   const [tokenBalance, setTokenBalance] = useState<string | null>(null)
   const [showTxStatus, setShowTxStatus] = useState(false)
   const [hasAlreadyClaimed, setHasAlreadyClaimed] = useState(false)
-  const [wittyResponse, setWittyResponse] = useState("")
-  const [showWittyResponse, setShowWittyResponse] = useState(false)
   const [attemptedReclaimCount, setAttemptedReclaimCount] = useState(0)
+  const [showDoubleClaimMessage, setShowDoubleClaimMessage] = useState(false)
 
   // State for persistent messages
   const [showStatusMessage, setShowStatusMessage] = useState(false)
@@ -60,6 +46,13 @@ export default function YouTubeMinter() {
     }
   }, [status])
 
+  // Show double claim message when hasAlreadyClaimed changes
+  useEffect(() => {
+    if (hasAlreadyClaimed) {
+      setShowDoubleClaimMessage(true)
+    }
+  }, [hasAlreadyClaimed])
+
   // Handle wallet connection
   const handleWalletConnect = (walletAddress: string, walletProvider: any) => {
     console.log("Wallet connected:", walletAddress)
@@ -74,7 +67,7 @@ export default function YouTubeMinter() {
     setHasAlreadyClaimed(false)
     setShowStatusMessage(false)
     setIsClaimInProgress(false)
-    setShowWittyResponse(false)
+    setShowDoubleClaimMessage(false)
     setAttemptedReclaimCount(0)
 
     // Check if this wallet has already claimed
@@ -95,7 +88,7 @@ export default function YouTubeMinter() {
     setShowTxStatus(false)
     setShowStatusMessage(false)
     setIsClaimInProgress(false)
-    setShowWittyResponse(false)
+    setShowDoubleClaimMessage(false)
     setAttemptedReclaimCount(0)
 
     console.log("Wallet state cleared")
@@ -106,15 +99,9 @@ export default function YouTubeMinter() {
     setShowStatusMessage(false)
   }
 
-  // Dismiss witty response
-  const dismissWittyResponse = () => {
-    setShowWittyResponse(false)
-  }
-
-  // Get a random witty response
-  const getRandomWittyResponse = () => {
-    const index = Math.floor(Math.random() * wittyResponses.length)
-    return wittyResponses[index]
+  // Dismiss double claim message
+  const dismissDoubleClaimMessage = () => {
+    setShowDoubleClaimMessage(false)
   }
 
   // Check if wallet has already claimed
@@ -130,6 +117,8 @@ export default function YouTubeMinter() {
         setStatus("already-claimed")
         setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
         setShowStatusMessage(true)
+        setShowDoubleClaimMessage(true)
+
         if (data.txHash && data.txHash !== "pending" && data.txHash !== "failed") {
           setTxHash(data.txHash)
           setShowTxStatus(true)
@@ -177,18 +166,10 @@ export default function YouTubeMinter() {
       // Increment the attempted reclaim counter
       const newCount = attemptedReclaimCount + 1
       setAttemptedReclaimCount(newCount)
+      console.log("Attempted reclaim count:", newCount)
 
-      // Get a witty response
-      const response = getRandomWittyResponse()
-      setWittyResponse(response)
-      setShowWittyResponse(true)
-
-      // If they're really persistent, add some extra humor
-      if (newCount >= 3) {
-        setWittyResponse(
-          `${response} Wow, you've tried ${newCount} times! Persistence is admirable, but maybe try a different wallet?`,
-        )
-      }
+      // Show the double claim message with the updated count
+      setShowDoubleClaimMessage(true)
 
       setStatus("already-claimed")
       setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
@@ -202,8 +183,7 @@ export default function YouTubeMinter() {
       setStatus("loading")
       setMessage("Verifying subscription and minting tokens...")
       setShowTxStatus(false)
-      setShowStatusMessage(false)
-      setShowWittyResponse(false)
+      setShowStatusMessage(true)
 
       const result = await verifyAndMint(address, token)
       console.log("Claim result:", result)
@@ -221,11 +201,7 @@ export default function YouTubeMinter() {
         setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
         setHasAlreadyClaimed(true)
         setShowStatusMessage(true)
-
-        // Show a witty response for the first time they try to claim again
-        const response = getRandomWittyResponse()
-        setWittyResponse(response)
-        setShowWittyResponse(true)
+        setShowDoubleClaimMessage(true)
 
         if (result.txHash) {
           setTxHash(result.txHash)
@@ -236,11 +212,21 @@ export default function YouTubeMinter() {
         setMessage(result.error || "Failed to mint tokens. Please try again.")
         setShowStatusMessage(true)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error during claim process:", error)
-      setStatus("error")
-      setMessage("An unexpected error occurred. Please try again.")
-      setShowStatusMessage(true)
+
+      // Check if the error is related to already claimed tokens
+      if (error.message && error.message.toLowerCase().includes("already claimed")) {
+        setStatus("already-claimed")
+        setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
+        setHasAlreadyClaimed(true)
+        setShowStatusMessage(true)
+        setShowDoubleClaimMessage(true)
+      } else {
+        setStatus("error")
+        setMessage(error.message || "An unexpected error occurred. Please try again.")
+        setShowStatusMessage(true)
+      }
     } finally {
       setIsClaimInProgress(false)
     }
@@ -292,21 +278,9 @@ export default function YouTubeMinter() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Witty Response for Repeat Claimers */}
-        {showWittyResponse && (
-          <Alert className="bg-purple-900/20 border-purple-800 text-purple-300 relative">
-            <Coffee className="h-4 w-4" />
-            <AlertTitle>Already Claimed!</AlertTitle>
-            <AlertDescription className="font-medium">{wittyResponse}</AlertDescription>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute top-2 right-2 h-6 w-6 text-purple-400 hover:text-purple-300 hover:bg-purple-900/30"
-              onClick={dismissWittyResponse}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </Alert>
+        {/* Double Claim Message */}
+        {showDoubleClaimMessage && (
+          <DoubleClaimMessage attemptCount={attemptedReclaimCount} onDismiss={dismissDoubleClaimMessage} />
         )}
 
         {/* Wallet Connection */}
