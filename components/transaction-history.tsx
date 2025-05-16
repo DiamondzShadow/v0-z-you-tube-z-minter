@@ -41,7 +41,7 @@ export default function TransactionHistory() {
   }, [error])
 
   // Handle wallet connection
-  const handleWalletConnect = (walletAddress: string) => {
+  const handleWalletConnect = (walletAddress: string, provider: any) => {
     console.log("Wallet connected in history:", walletAddress)
     setAddress(walletAddress)
     setError(null)

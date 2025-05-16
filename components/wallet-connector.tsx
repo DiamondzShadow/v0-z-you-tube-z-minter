@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Loader2, Wallet, LogOut } from "lucide-react"
+import { connectWallet, disconnectWallet, checkWalletConnection } from "@/lib/wallet-connect"
 import { ethers } from "ethers"
 
 interface WalletConnectorProps {
@@ -26,23 +27,20 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
   useEffect(() => {
     if (!mounted) return
 
-    const checkConnection = async () => {
-      if (typeof window !== "undefined" && window.ethereum) {
-        try {
-          const provider = new ethers.BrowserProvider(window.ethereum)
-          const accounts = await provider.listAccounts()
-
-          if (accounts.length > 0) {
-            setAddress(accounts[0].address)
-            onConnect(accounts[0].address, provider)
-          }
-        } catch (err) {
-          console.error("Failed to check wallet connection:", err)
+    const restoreConnection = async () => {
+      try {
+        const connection = await checkWalletConnection()
+        if (connection) {
+          console.log("Restored wallet connection:", connection.address)
+          setAddress(connection.address)
+          onConnect(connection.address, connection.provider)
         }
+      } catch (err) {
+        console.error("Failed to restore wallet connection:", err)
       }
     }
 
-    checkConnection()
+    restoreConnection()
   }, [onConnect, mounted])
 
   // Listen for account changes
@@ -55,7 +53,7 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
         // User disconnected from wallet UI
         console.log("Accounts changed to empty array - user disconnected from wallet UI")
         handleDisconnect()
-      } else {
+      } else if (address && accounts[0].toLowerCase() !== address.toLowerCase()) {
         // Account changed
         console.log("Account changed to:", accounts[0])
         setAddress(accounts[0])
@@ -73,24 +71,17 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
         window.ethereum.removeListener("accountsChanged", handleAccountsChanged)
       }
     }
-  }, [onConnect, onDisconnect, mounted])
+  }, [onConnect, onDisconnect, mounted, address])
 
-  const connectWallet = async () => {
-    if (typeof window === "undefined" || !window.ethereum) {
-      setError("No Ethereum wallet found. Please install MetaMask or another wallet.")
-      return
-    }
-
+  const handleConnectWallet = async () => {
     setIsConnecting(true)
     setError(null)
 
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum)
-      const accounts = await provider.send("eth_requestAccounts", [])
-
-      if (accounts.length > 0) {
-        setAddress(accounts[0])
-        onConnect(accounts[0], provider)
+      const connection = await connectWallet()
+      if (connection) {
+        setAddress(connection.address)
+        onConnect(connection.address, connection.provider)
       }
     } catch (err: any) {
       console.error("Error connecting wallet:", err)
@@ -107,14 +98,11 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
     // Clear local state
     setAddress(null)
 
+    // Disconnect wallet
+    disconnectWallet()
+
     // Call the parent's onDisconnect callback
     onDisconnect()
-
-    // Add localStorage cleanup
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("walletConnected")
-      localStorage.removeItem("connectedWallet")
-    }
 
     // Show disconnection message for 2 seconds
     setTimeout(() => {
@@ -156,7 +144,7 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
 
   return (
     <div className="space-y-2">
-      <Button onClick={connectWallet} disabled={isConnecting} className="w-full">
+      <Button onClick={handleConnectWallet} disabled={isConnecting} className="w-full">
         {isConnecting ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -186,6 +174,7 @@ declare global {
       request: (args: { method: string; params?: any[] }) => Promise<any>
       on: (event: string, listener: (...args: any[]) => void) => void
       removeListener: (event: string, listener: (...args: any[]) => void) => void
+      isMetaMask?: boolean
     }
   }
 }
