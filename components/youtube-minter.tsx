@@ -10,6 +10,7 @@ import { WalletConnector } from "./wallet-connector"
 import { GoogleLoginButton } from "./google-login-button"
 import { useGoogleAuth } from "@/hooks/use-google-auth"
 import { verifyAndMint } from "@/lib/actions"
+import { TransactionStatus } from "./transaction-status"
 
 export default function YouTubeMinter() {
   const [mounted, setMounted] = useState(false)
@@ -21,6 +22,7 @@ export default function YouTubeMinter() {
   const [message, setMessage] = useState("")
   const [txHash, setTxHash] = useState("")
   const [tokenBalance, setTokenBalance] = useState<string | null>(null)
+  const [showTxStatus, setShowTxStatus] = useState(false)
 
   // Set mounted state after component mounts
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function YouTubeMinter() {
     try {
       setStatus("loading")
       setMessage("Verifying subscription and minting tokens...")
+      setShowTxStatus(false)
 
       const result = await verifyAndMint(address, token)
 
@@ -73,6 +76,9 @@ export default function YouTubeMinter() {
         setStatus("success")
         setMessage("Successfully minted 250 tokens to your wallet!")
         setTxHash(result.txHash)
+        setShowTxStatus(true)
+        // Refresh token balance after successful mint
+        fetchTokenBalance(address)
       } else {
         setStatus("error")
         setMessage(result.error || "Failed to mint tokens. Please try again.")
@@ -81,6 +87,14 @@ export default function YouTubeMinter() {
       setStatus("error")
       setMessage("An unexpected error occurred. Please try again.")
       console.error(error)
+    }
+  }
+
+  // Handle transaction confirmation
+  const handleTransactionConfirmed = () => {
+    // Refresh token balance when transaction is confirmed
+    if (address) {
+      fetchTokenBalance(address)
     }
   }
 
@@ -149,24 +163,20 @@ export default function YouTubeMinter() {
           </Button>
         </div>
 
+        {/* Transaction Status */}
+        {showTxStatus && txHash && (
+          <div className="mt-4">
+            <div className="text-sm font-medium mb-2">Transaction Status</div>
+            <TransactionStatus txHash={txHash} onConfirmed={handleTransactionConfirmed} />
+          </div>
+        )}
+
         {/* Status Messages */}
-        {status === "success" && (
+        {status === "success" && !showTxStatus && (
           <Alert className="bg-green-900/20 border-green-800 text-green-400">
             <Check className="h-4 w-4" />
             <AlertTitle>Success!</AlertTitle>
-            <AlertDescription>
-              {message}
-              {txHash && (
-                <a
-                  href={`https://arbiscan.io/tx/${txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block mt-1 text-xs underline"
-                >
-                  View transaction
-                </a>
-              )}
-            </AlertDescription>
+            <AlertDescription>{message}</AlertDescription>
           </Alert>
         )}
 
