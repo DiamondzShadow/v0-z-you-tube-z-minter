@@ -22,10 +22,15 @@ function createMockTransaction(address: string) {
 
 // Check if a wallet has already claimed (contract level)
 export async function hasWalletClaimed(walletAddress: string): Promise<boolean> {
+  console.log("Checking if wallet has claimed on-chain:", walletAddress)
+
   // For development or if environment variables are missing
   if (process.env.NODE_ENV !== "production" || !process.env.RPC_URL || !process.env.CONTRACT_ADDRESS) {
+    console.log("Development mode: Simulating on-chain claim check")
     // Simulate based on wallet address for testing
-    return walletAddress.toLowerCase().endsWith("1") || walletAddress.toLowerCase().endsWith("3")
+    const hasClaimedSimulated = walletAddress.toLowerCase().endsWith("1") || walletAddress.toLowerCase().endsWith("3")
+    console.log("Simulated on-chain claim result:", hasClaimedSimulated)
+    return hasClaimedSimulated
   }
 
   try {
@@ -37,11 +42,16 @@ export async function hasWalletClaimed(walletAddress: string): Promise<boolean> 
 
     // Check if the contract has the hasClaimed function
     try {
-      return await contract.hasClaimed(walletAddress)
+      const hasClaimed = await contract.hasClaimed(walletAddress)
+      console.log("On-chain hasClaimed result:", hasClaimed)
+      return hasClaimed
     } catch (error) {
+      console.log("hasClaimed function not found, checking balance instead")
       // If the contract doesn't have this function, fall back to checking the balance
       const balance = await contract.balanceOf(walletAddress)
-      return balance > 0
+      const hasBalance = balance > 0
+      console.log("On-chain balance check result:", hasBalance)
+      return hasBalance
     }
   } catch (error) {
     console.error("Error checking if wallet has claimed:", error)
@@ -50,9 +60,12 @@ export async function hasWalletClaimed(walletAddress: string): Promise<boolean> 
 }
 
 export async function mintTokens(recipientAddress: string, amount: any) {
+  console.log("Minting tokens to address:", recipientAddress, "amount:", amount.toString())
+
   // First, check if the wallet has already claimed at the contract level
   const hasClaimedOnChain = await hasWalletClaimed(recipientAddress)
   if (hasClaimedOnChain) {
+    console.error("This wallet has already claimed tokens according to the smart contract.")
     throw new Error("This wallet has already claimed tokens according to the smart contract.")
   }
 
@@ -64,7 +77,9 @@ export async function mintTokens(recipientAddress: string, amount: any) {
     !process.env.RPC_URL
   ) {
     console.log("Development mode: Using mock transaction")
-    return createMockTransaction(recipientAddress)
+    const mockTx = createMockTransaction(recipientAddress)
+    console.log("Created mock transaction:", mockTx.hash)
+    return mockTx
   }
 
   try {
@@ -72,14 +87,17 @@ export async function mintTokens(recipientAddress: string, amount: any) {
     const contractAddress = process.env.CONTRACT_ADDRESS
     const rpcUrl = process.env.RPC_URL
 
-    // Connect to the blockchain using ethers v5 syntax
+    // Connect to the blockchain using ethers v6 syntax
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const wallet = new ethers.Wallet(privateKey, provider)
     const contract = new ethers.Contract(contractAddress, tokenABI, wallet)
 
+    console.log("Sending mint transaction...")
     // Mint tokens to the recipient
     const tx = await contract.mint(recipientAddress, amount)
+    console.log("Transaction sent, waiting for confirmation...")
     await tx.wait()
+    console.log("Transaction confirmed:", tx.hash)
 
     return tx
   } catch (error) {
@@ -87,6 +105,7 @@ export async function mintTokens(recipientAddress: string, amount: any) {
 
     // For non-production environments, return a mock transaction on error
     if (process.env.NODE_ENV !== "production") {
+      console.log("Development mode: Returning mock transaction after error")
       return createMockTransaction(recipientAddress)
     }
 
@@ -95,8 +114,11 @@ export async function mintTokens(recipientAddress: string, amount: any) {
 }
 
 export async function getTokenBalance(address: string): Promise<string> {
+  console.log("Getting token balance for address:", address)
+
   // For development or if environment variables are missing
   if (process.env.NODE_ENV !== "production" || !process.env.CONTRACT_ADDRESS || !process.env.RPC_URL) {
+    console.log("Development mode: Returning mock balance")
     return "250.0"
   }
 
@@ -104,15 +126,17 @@ export async function getTokenBalance(address: string): Promise<string> {
     const contractAddress = process.env.CONTRACT_ADDRESS
     const rpcUrl = process.env.RPC_URL
 
-    // Connect to the blockchain using ethers v5 syntax
+    // Connect to the blockchain using ethers v6 syntax
     const provider = new ethers.JsonRpcProvider(rpcUrl)
     const contract = new ethers.Contract(contractAddress, tokenABI, provider)
 
     // Get token balance
     const balance = await contract.balanceOf(address)
+    const formattedBalance = ethers.formatUnits(balance, 18)
+    console.log("Token balance:", formattedBalance)
 
     // Format the balance to a readable string
-    return ethers.formatUnits(balance, 18)
+    return formattedBalance
   } catch (error) {
     console.error("Error getting token balance:", error)
 

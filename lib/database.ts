@@ -19,6 +19,7 @@ export async function checkAndRecordClaim(
 ): Promise<ClaimRecord | null> {
   try {
     const normalizedAddress = walletAddress.toLowerCase()
+    console.log(`Database action: ${action} for wallet: ${normalizedAddress}`)
 
     // Check if wallet has already claimed
     if (action === "check") {
@@ -29,6 +30,7 @@ export async function checkAndRecordClaim(
         console.log(`Found existing claim for ${normalizedAddress}: ${JSON.stringify(existingClaim)}`)
         return existingClaim
       }
+      console.log(`No existing claim found for ${normalizedAddress}`)
       return null
     }
 

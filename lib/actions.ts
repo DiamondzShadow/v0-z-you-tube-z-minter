@@ -7,10 +7,13 @@ import { checkAndRecordClaim } from "./database"
 
 export async function verifyAndMint(walletAddress: string, googleAccessToken: string) {
   try {
+    console.log("Starting verifyAndMint for wallet:", walletAddress)
+
     // Normalize the wallet address to ensure consistent checks
     const normalizedAddress = walletAddress.toLowerCase()
 
     // CRITICAL: Check if wallet has already claimed - this must happen FIRST
+    console.log("Checking if wallet has already claimed...")
     const existingClaim = await checkAndRecordClaim(normalizedAddress, "check")
 
     if (existingClaim) {
@@ -24,9 +27,11 @@ export async function verifyAndMint(walletAddress: string, googleAccessToken: st
     }
 
     // Verify YouTube subscription
+    console.log("Verifying YouTube subscription...")
     let isSubscribed = false
     try {
       isSubscribed = await getSubscriptionStatus(googleAccessToken)
+      console.log("YouTube subscription verified:", isSubscribed)
     } catch (ytError) {
       console.error("YouTube verification failed:", ytError)
       return {
@@ -36,6 +41,7 @@ export async function verifyAndMint(walletAddress: string, googleAccessToken: st
     }
 
     if (!isSubscribed) {
+      console.log("User is not subscribed to the YouTube channel")
       return {
         success: false,
         error: "You need to subscribe to the YouTube channel first",
@@ -44,6 +50,7 @@ export async function verifyAndMint(walletAddress: string, googleAccessToken: st
 
     // IMPORTANT: Record the claim BEFORE minting to prevent race conditions
     // This creates a "pending" claim record
+    console.log("Recording pending claim...")
     await checkAndRecordClaim(normalizedAddress, "record-pending", {
       txHash: "pending",
       timestamp: Date.now(),
@@ -51,11 +58,14 @@ export async function verifyAndMint(walletAddress: string, googleAccessToken: st
 
     // Mint tokens to user's wallet
     try {
+      console.log("Minting tokens...")
       // Use ethers.js v6 syntax for parsing units
       const tokenAmount = ethers.parseUnits("250", 18)
       const tx = await mintTokens(normalizedAddress, tokenAmount)
+      console.log("Minting successful, tx hash:", tx.hash)
 
       // Update the claim record with the actual transaction hash
+      console.log("Recording completed claim...")
       await checkAndRecordClaim(normalizedAddress, "record-complete", {
         txHash: tx.hash,
         timestamp: Date.now(),
@@ -68,12 +78,12 @@ export async function verifyAndMint(walletAddress: string, googleAccessToken: st
       }
     } catch (mintError: any) {
       // If minting fails, we should remove the pending claim
+      console.error("Token minting failed:", mintError)
       await checkAndRecordClaim(normalizedAddress, "record-failed", {
         txHash: "failed",
         timestamp: Date.now(),
       })
 
-      console.error("Token minting failed:", mintError)
       return {
         success: false,
         error: "Failed to mint tokens: " + (mintError.message || "Unknown error"),

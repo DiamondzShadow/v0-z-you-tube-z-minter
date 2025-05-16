@@ -26,8 +26,10 @@ export default function YouTubeMinter() {
   const [showTxStatus, setShowTxStatus] = useState(false)
   const [hasAlreadyClaimed, setHasAlreadyClaimed] = useState(false)
 
-  // New state for persistent messages
+  // State for persistent messages
   const [showStatusMessage, setShowStatusMessage] = useState(false)
+  // Add a state to track if claim is in progress
+  const [isClaimInProgress, setIsClaimInProgress] = useState(false)
 
   // Set mounted state after component mounts
   useEffect(() => {
@@ -54,6 +56,7 @@ export default function YouTubeMinter() {
     setShowTxStatus(false)
     setHasAlreadyClaimed(false)
     setShowStatusMessage(false)
+    setIsClaimInProgress(false)
 
     // Check if this wallet has already claimed
     checkWalletClaimStatus(walletAddress)
@@ -72,13 +75,7 @@ export default function YouTubeMinter() {
     setTxHash("")
     setShowTxStatus(false)
     setShowStatusMessage(false)
-
-    // Clear any localStorage items
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("walletConnected")
-      localStorage.removeItem("connectedWallet")
-      // Add any other wallet-related items you might be storing
-    }
+    setIsClaimInProgress(false)
 
     console.log("Wallet state cleared")
   }
@@ -91,15 +88,19 @@ export default function YouTubeMinter() {
   // Check if wallet has already claimed
   async function checkWalletClaimStatus(walletAddress: string) {
     try {
+      console.log("Checking claim status for wallet:", walletAddress)
       const response = await fetch(`/api/check-claim-status?address=${walletAddress}`)
       const data = await response.json()
+      console.log("Claim status response:", data)
 
       if (data.hasClaimed) {
         setHasAlreadyClaimed(true)
         setStatus("already-claimed")
         setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
+        setShowStatusMessage(true)
         if (data.txHash && data.txHash !== "pending" && data.txHash !== "failed") {
           setTxHash(data.txHash)
+          setShowTxStatus(true)
         }
       }
     } catch (error) {
@@ -126,9 +127,16 @@ export default function YouTubeMinter() {
   }
 
   async function handleClaim() {
+    // Prevent multiple claim attempts
+    if (isClaimInProgress) {
+      console.log("Claim already in progress, ignoring click")
+      return
+    }
+
     if (!address || !token) {
       setMessage("Please connect your wallet and Google account first")
       setStatus("error")
+      setShowStatusMessage(true)
       return
     }
 
@@ -136,28 +144,34 @@ export default function YouTubeMinter() {
     if (hasAlreadyClaimed) {
       setStatus("already-claimed")
       setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
+      setShowStatusMessage(true)
       return
     }
 
     try {
+      console.log("Starting claim process for wallet:", address)
+      setIsClaimInProgress(true)
       setStatus("loading")
       setMessage("Verifying subscription and minting tokens...")
       setShowTxStatus(false)
       setShowStatusMessage(false)
 
       const result = await verifyAndMint(address, token)
+      console.log("Claim result:", result)
 
       if (result.success) {
         setStatus("success")
         setMessage("Successfully minted 250 tokens to your wallet!")
         setTxHash(result.txHash)
         setShowTxStatus(true)
+        setShowStatusMessage(true)
         // Refresh token balance after successful mint
         fetchTokenBalance(address)
       } else if (result.alreadyClaimed) {
         setStatus("already-claimed")
         setMessage("This wallet has already claimed tokens. Each wallet can only claim once.")
         setHasAlreadyClaimed(true)
+        setShowStatusMessage(true)
         if (result.txHash) {
           setTxHash(result.txHash)
           setShowTxStatus(true)
@@ -165,11 +179,15 @@ export default function YouTubeMinter() {
       } else {
         setStatus("error")
         setMessage(result.error || "Failed to mint tokens. Please try again.")
+        setShowStatusMessage(true)
       }
     } catch (error) {
+      console.error("Error during claim process:", error)
       setStatus("error")
       setMessage("An unexpected error occurred. Please try again.")
-      console.error(error)
+      setShowStatusMessage(true)
+    } finally {
+      setIsClaimInProgress(false)
     }
   }
 
@@ -244,9 +262,9 @@ export default function YouTubeMinter() {
           <Button
             className="w-full"
             onClick={handleClaim}
-            disabled={!address || !user || status === "loading" || hasAlreadyClaimed}
+            disabled={!address || !user || status === "loading" || hasAlreadyClaimed || isClaimInProgress}
           >
-            {status === "loading" ? (
+            {status === "loading" || isClaimInProgress ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Verifying & Minting...
@@ -274,7 +292,7 @@ export default function YouTubeMinter() {
         )}
 
         {/* Status Messages - Now with dismiss button */}
-        {showStatusMessage && status === "success" && !showTxStatus && (
+        {showStatusMessage && status === "success" && (
           <Alert className="bg-green-900/20 border-green-800 text-green-400 relative">
             <Check className="h-4 w-4" />
             <AlertTitle>Success!</AlertTitle>
