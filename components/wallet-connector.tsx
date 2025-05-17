@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Wallet, LogOut } from "lucide-react"
 import { connectWallet, disconnectWallet, checkWalletConnection } from "@/lib/wallet-connect"
 import { ethers } from "ethers"
+import { useMobile } from "@/hooks/use-mobile"
+import { MobileWalletConnector } from "./mobile-wallet-connector"
 
 interface WalletConnectorProps {
   onConnect: (address: string, provider: any) => void
@@ -17,6 +19,7 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
+  const { isMobile, mounted: isMobileMounted } = useMobile()
 
   // Set mounted state after component mounts
   useEffect(() => {
@@ -113,8 +116,13 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
   }
 
   // Don't render anything during SSR
-  if (!mounted) {
+  if (!mounted || !isMobileMounted) {
     return null
+  }
+
+  // Show mobile wallet connector if on mobile
+  if (isMobile && !address) {
+    return <MobileWalletConnector onConnect={onConnect} />
   }
 
   if (isDisconnecting) {
@@ -158,7 +166,7 @@ export function WalletConnector({ onConnect, onDisconnect }: WalletConnectorProp
         )}
       </Button>
       {error && <p className="text-xs text-red-400">{error}</p>}
-      {mounted && typeof window !== "undefined" && !window.ethereum && (
+      {mounted && typeof window !== "undefined" && !window.ethereum && !isMobile && (
         <p className="text-xs text-amber-400">
           No wallet detected. Please install MetaMask or another Ethereum wallet.
         </p>

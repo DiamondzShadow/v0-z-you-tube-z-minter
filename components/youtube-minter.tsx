@@ -12,9 +12,11 @@ import { useGoogleAuth } from "@/hooks/use-google-auth"
 import { verifyAndMint } from "@/lib/actions"
 import { TransactionStatus } from "./transaction-status"
 import { DoubleClaimMessage } from "./double-claim-message"
+import { WalletGuide } from "./wallet-guide"
 import Link from "next/link"
 
 export default function YouTubeMinter() {
+  // ... existing state and functions ...
   const [mounted, setMounted] = useState(false)
   const [address, setAddress] = useState<string | null>(null)
   const [provider, setProvider] = useState<any | null>(null)
@@ -301,6 +303,9 @@ export default function YouTubeMinter() {
             You'll need to connect to the Diamond zShadow Chain (Chain ID: 32677) to use your tokens.
           </AlertDescription>
         </Alert>
+
+        {/* Wallet Guide */}
+        <WalletGuide />
 
         {/* Wallet Connection */}
         <div className="space-y-2">

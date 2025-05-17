@@ -61,8 +61,21 @@ export async function checkWalletConnection(): Promise<{ address: string; provid
 
 // Connect to wallet
 export async function connectWallet(): Promise<{ address: string; provider: any } | null> {
-  if (typeof window === "undefined" || !window.ethereum) {
-    throw new Error("No Ethereum wallet found. Please install MetaMask or another wallet.")
+  if (typeof window === "undefined") {
+    throw new Error("Cannot connect wallet in server-side rendering")
+  }
+
+  if (!window.ethereum) {
+    // On mobile, we should guide users to open in their wallet's browser
+    const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+      navigator.userAgent.toLowerCase(),
+    )
+
+    if (isMobile) {
+      throw new Error("Please open this dApp in your wallet's browser to connect")
+    } else {
+      throw new Error("No Ethereum wallet found. Please install MetaMask or another wallet.")
+    }
   }
 
   try {
