@@ -1,8 +1,5 @@
 import { ethers } from "ethers"
 
-// WalletConnect Project ID
-const PROJECT_ID = "d67db65de9b00403e9d42a588c8a2132"
-
 // Store the connected wallet address in localStorage
 export function storeWalletConnection(address: string) {
   if (typeof window !== "undefined") {
@@ -23,6 +20,23 @@ export function getStoredWalletConnection(): string | null {
     return localStorage.getItem("connectedWallet")
   }
   return null
+}
+
+// Check if the user is in a wallet browser
+export function isInWalletBrowser(): boolean {
+  if (typeof window === "undefined") return false
+
+  const userAgent = navigator.userAgent.toLowerCase()
+
+  // Check for common wallet browsers
+  return (
+    userAgent.includes("trust") ||
+    userAgent.includes("metamask") ||
+    userAgent.includes("coinbase") ||
+    userAgent.includes("rainbow") ||
+    // Check for ethereum provider injected by wallet browsers
+    (window.ethereum && (window.ethereum.isMetaMask || window.ethereum.isTrust || window.ethereum.isCoinbaseWallet))
+  )
 }
 
 // Check if the wallet is still connected
@@ -72,7 +86,11 @@ export async function connectWallet(): Promise<{ address: string; provider: any 
     )
 
     if (isMobile) {
-      throw new Error("Please open this dApp in your wallet's browser to connect")
+      if (isInWalletBrowser()) {
+        throw new Error("Please refresh the page and try connecting again")
+      } else {
+        throw new Error("Please open this dApp in your wallet's browser to connect")
+      }
     } else {
       throw new Error("No Ethereum wallet found. Please install MetaMask or another wallet.")
     }
@@ -101,4 +119,45 @@ export async function connectWallet(): Promise<{ address: string; provider: any 
 // Disconnect wallet
 export function disconnectWallet() {
   clearWalletConnection()
+}
+
+// Get wallet balance
+export async function getWalletBalance(address: string, provider: ethers.Provider): Promise<string> {
+  try {
+    const balance = await provider.getBalance(address)
+    return ethers.formatEther(balance)
+  } catch (error) {
+    console.error("Error getting wallet balance:", error)
+    return "0.0"
+  }
+}
+
+// Sign a message with the wallet
+export async function signMessage(message: string, provider: ethers.BrowserProvider): Promise<string> {
+  try {
+    const signer = await provider.getSigner()
+    return await signer.signMessage(message)
+  } catch (error) {
+    console.error("Error signing message:", error)
+    throw error
+  }
+}
+
+// Send a transaction
+export async function sendTransaction(
+  to: string,
+  value: string,
+  provider: ethers.BrowserProvider,
+): Promise<ethers.TransactionResponse> {
+  try {
+    const signer = await provider.getSigner()
+    const tx = await signer.sendTransaction({
+      to,
+      value: ethers.parseEther(value),
+    })
+    return tx
+  } catch (error) {
+    console.error("Error sending transaction:", error)
+    throw error
+  }
 }

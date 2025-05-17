@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Smartphone, Copy, Check } from "lucide-react"
 import { useMobile } from "@/hooks/use-mobile"
 import { WalletQRCode } from "./wallet-qr-code"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { isInWalletBrowser } from "@/lib/wallet-connect"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface MobileWalletConnectorProps {
   onConnect: (address: string, provider: any) => void
@@ -15,7 +17,15 @@ interface MobileWalletConnectorProps {
 export function MobileWalletConnector({ onConnect }: MobileWalletConnectorProps) {
   const [copied, setCopied] = useState(false)
   const { isMobile } = useMobile()
+  const [inWalletBrowser, setInWalletBrowser] = useState(false)
   const dappUrl = typeof window !== "undefined" ? window.location.href : ""
+
+  // Check if we're in a wallet browser
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setInWalletBrowser(isInWalletBrowser())
+    }
+  }, [])
 
   // Function to copy the dApp URL to clipboard
   const copyToClipboard = () => {
@@ -53,6 +63,19 @@ export function MobileWalletConnector({ onConnect }: MobileWalletConnectorProps)
   }
 
   if (!isMobile) return null
+
+  // If we're already in a wallet browser, show a different UI
+  if (inWalletBrowser) {
+    return (
+      <Alert className="bg-green-900/20 border-green-800 text-green-400 mb-4">
+        <Smartphone className="h-4 w-4" />
+        <AlertTitle>Wallet Browser Detected</AlertTitle>
+        <AlertDescription>
+          You're already in a wallet browser. Click the "Connect Wallet" button to connect.
+        </AlertDescription>
+      </Alert>
+    )
+  }
 
   return (
     <Card className="bg-zinc-800/50 border-zinc-700 mb-4">

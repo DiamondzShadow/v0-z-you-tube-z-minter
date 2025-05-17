@@ -13,14 +13,15 @@ import { verifyAndMint } from "@/lib/actions"
 import { TransactionStatus } from "./transaction-status"
 import { DoubleClaimMessage } from "./double-claim-message"
 import { WalletGuide } from "./wallet-guide"
+import { WalletActions } from "./wallet-actions"
 import Link from "next/link"
 
 export default function YouTubeMinter() {
-  // ... existing state and functions ...
   const [mounted, setMounted] = useState(false)
   const [address, setAddress] = useState<string | null>(null)
   const [provider, setProvider] = useState<any | null>(null)
   const { user, token, login, isLoading: isGoogleLoading } = useGoogleAuth()
+  const [showWalletActions, setShowWalletActions] = useState(false)
 
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error" | "already-claimed">("idle")
   const [message, setMessage] = useState("")
@@ -92,8 +93,14 @@ export default function YouTubeMinter() {
     setIsClaimInProgress(false)
     setShowDoubleClaimMessage(false)
     setAttemptedReclaimCount(0)
+    setShowWalletActions(false)
 
     console.log("Wallet state cleared")
+  }
+
+  // Toggle wallet actions
+  const toggleWalletActions = () => {
+    setShowWalletActions(!showWalletActions)
   }
 
   // Dismiss status message
@@ -312,13 +319,19 @@ export default function YouTubeMinter() {
           <div className="text-sm font-medium">Step 1: Connect your wallet</div>
           <WalletConnector onConnect={handleWalletConnect} onDisconnect={handleWalletDisconnect} />
           {address && tokenBalance && (
-            <div className="text-xs text-zinc-400 mt-1">
+            <div className="flex items-center justify-between text-xs text-zinc-400 mt-1">
               <Badge variant="outline" className="ml-2">
                 Balance: {tokenBalance} DIAMD
               </Badge>
+              <Button variant="ghost" size="sm" onClick={toggleWalletActions} className="h-7 text-xs">
+                {showWalletActions ? "Hide Wallet Actions" : "Show Wallet Actions"}
+              </Button>
             </div>
           )}
         </div>
+
+        {/* Wallet Actions (when connected) */}
+        {address && provider && showWalletActions && <WalletActions address={address} provider={provider} />}
 
         {/* Google Login */}
         <div className="space-y-2">
