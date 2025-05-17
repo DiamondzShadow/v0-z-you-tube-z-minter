@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Youtube, Wallet, Check, AlertCircle, History, XCircle, X } from "lucide-react"
+import { Loader2, Wallet, Check, AlertCircle, History, XCircle, X, Diamond } from "lucide-react"
 import { WalletConnector } from "./wallet-connector"
 import { GoogleLoginButton } from "./google-login-button"
 import { useGoogleAuth } from "@/hooks/use-google-auth"
@@ -190,7 +190,7 @@ export default function YouTubeMinter() {
 
       if (result.success) {
         setStatus("success")
-        setMessage("Successfully minted 250 tokens to your wallet!")
+        setMessage("Successfully minted 250 DIAMD tokens to your wallet!")
         setTxHash(result.txHash)
         setShowTxStatus(true)
         setShowStatusMessage(true)
@@ -246,8 +246,8 @@ export default function YouTubeMinter() {
       <Card className="w-full bg-zinc-800 border-zinc-700">
         <CardHeader className="pb-4">
           <CardTitle className="text-2xl flex items-center gap-2">
-            <Youtube className="h-6 w-6 text-red-500" />
-            YouTube Token Minter
+            <Diamond className="h-6 w-6 text-blue-400" />
+            Diamond zShadow Token Minter
           </CardTitle>
           <CardDescription>Loading application...</CardDescription>
         </CardHeader>
@@ -264,10 +264,10 @@ export default function YouTubeMinter() {
         <div className="flex justify-between items-center">
           <div>
             <CardTitle className="text-2xl flex items-center gap-2">
-              <Youtube className="h-6 w-6 text-red-500" />
-              YouTube Token Minter
+              <Diamond className="h-6 w-6 text-blue-400" />
+              Diamond zShadow Token Minter
             </CardTitle>
-            <CardDescription>Subscribe to our YouTube channel and claim 250 tokens as a reward</CardDescription>
+            <CardDescription>Subscribe to nlockchain media and claim 250 DIAMD tokens</CardDescription>
           </div>
           <Link href="/history">
             <Button variant="outline" size="sm" className="gap-2">
@@ -283,6 +283,25 @@ export default function YouTubeMinter() {
           <DoubleClaimMessage attemptCount={attemptedReclaimCount} onDismiss={dismissDoubleClaimMessage} />
         )}
 
+        {/* Limited Availability Notice */}
+        <Alert className="bg-blue-900/20 border-blue-800 text-blue-300">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Limited Availability</AlertTitle>
+          <AlertDescription>
+            Only the first 1,000 subscribers can claim tokens. Currently at{" "}
+            <span className="font-bold text-white">247</span>/1,000 subscribers.
+          </AlertDescription>
+        </Alert>
+
+        {/* Network Information */}
+        <Alert className="bg-purple-900/20 border-purple-800 text-purple-300">
+          <Diamond className="h-4 w-4" />
+          <AlertTitle>Diamond zShadow Network</AlertTitle>
+          <AlertDescription>
+            You'll need to connect to the Diamond zShadow Chain (Chain ID: 32677) to use your tokens.
+          </AlertDescription>
+        </Alert>
+
         {/* Wallet Connection */}
         <div className="space-y-2">
           <div className="text-sm font-medium">Step 1: Connect your wallet</div>
@@ -290,7 +309,7 @@ export default function YouTubeMinter() {
           {address && tokenBalance && (
             <div className="text-xs text-zinc-400 mt-1">
               <Badge variant="outline" className="ml-2">
-                Balance: {tokenBalance} Tokens
+                Balance: {tokenBalance} DIAMD
               </Badge>
             </div>
           )}
@@ -323,7 +342,7 @@ export default function YouTubeMinter() {
             ) : (
               <>
                 <Wallet className="mr-2 h-4 w-4" />
-                Claim 250 Tokens
+                Claim 250 DIAMD Tokens
               </>
             )}
           </Button>
@@ -387,8 +406,8 @@ export default function YouTubeMinter() {
         )}
       </CardContent>
       <CardFooter className="text-xs text-zinc-500 flex justify-between">
-        <div>One claim per wallet</div>
-        <div>Powered by YouTube API & Web3</div>
+        <div>Limited to first 1,000 subscribers</div>
+        <div>Powered by Diamond zShadow</div>
       </CardFooter>
     </Card>
   )
